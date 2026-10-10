@@ -6,12 +6,21 @@
 
 当前默认是明确标注的离线演示，不是真实 LLM。已经实现配置、Provider 抽象、OpenAI/豆包/Ollama Cloud 适配层、Tool Registry、受限 Agent Loop、事件状态和 CLI。工具包括工作区文件、固定应用白名单、固定诊断命令、受限 Playwright 网页浏览、屏幕 OCR，以及需确认的鼠标/键盘输入；不提供任意 Shell 或代码执行。桌面端使用本机 JSON Lines IPC 调用常驻 Python Agent；聊天面板由用户点击伙伴后展开，不会因唤醒而强制打开。
 
-## 在这台 Mac 上启动
+## 开发环境准备
 
-当前目录已创建 `.venv`，使用本机已有 Python 3.12.14。系统 `/usr/bin/python3` 是 3.9.6，不能用于本项目。
+需要 macOS 13+、Python 3.11+、Node.js/npm 和 Rust。首次克隆后，在仓库根目录创建 Python 环境并安装依赖：
 
 ```bash
-cd /path/to/JARVIS
+python3 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+cd desktop
+npm ci
+```
+
+启动 CLI：
+
+```bash
+cd /path/to/jarvis-macos-assistant
 source .venv/bin/activate
 python -m app.main
 ```
@@ -32,9 +41,9 @@ Thinking → Planning → Executing → Observing → Planning → Completed
 
 Phase 6 记忆保存在 `~/Library/Application Support/JARVIS/memory.sqlite3`，目录权限为 700、数据库权限为 600。短期记忆仅保存用户消息和最终回复，默认保留最近 8 轮；长期记忆和任务笔记只通过上述显式命令保存。`/reset` 只清短期记忆，`/forget all` 清除三类记忆。SQLite 文件是本机明文，不加密；恢复的短期历史以及长期/任务记忆会随后续请求加入模型上下文，并发送给当前配置的 Provider。用户可通过删除指定条目、`/forget all` 或直接删除数据库文件管理数据。测试可用 `JARVIS_MEMORY_PATH` 指定临时数据库路径。
 
-Phase 7 桌面宠物已实现为 macOS 原生悬浮窗口，设计预览位于 [ui/hud-prototype.html](ui/hud-prototype.html)，实现边界见 `docs/PHASE7_REPORT.md`。开发时在 `desktop/` 执行 `npm run tauri dev`；构建可分发物使用 `npm run tauri build`，输出 `.app` 和 `.dmg`。当前构建仍依赖本项目源码、`.venv`、`.env` 模型配置及本机语音辅助程序/模型，不能单独移动到其他 Mac 使用。窗口常驻最前、无边框并启用透明背景，点击伙伴可展开对话。Agent 由 Rust 后端以固定项目虚拟环境启动，通过 JSON Lines IPC 传递事件；有风险的工具操作仍需逐次确认，语音确认会先朗读操作目标；写入、屏幕输入和 MCP 等操作必须完整说“确认执行这项操作”，读取屏幕、窗口或工作区文件必须明确确认；长内容或疑似敏感参数需在桌面确认卡核对后点击允许或拒绝。应用会恢复最近的短期对话。点击语音键可手动进入连续对话；说完一句并停顿后，JARVIS 会自动识别、发送、语音回答，再继续聆听；再次点击结束。静音检测、语音识别和朗读均在本机执行，不录制或保存音频文件；只有识别文字会在对话轮次中发送给当前 Provider。缺少语音模型时，会先询问是否从 Apple 下载。快捷栏扬声器按钮控制普通文字对话的自动朗读；语音对话始终语音回答。朗读使用本机高品质中文语音，并微调语速、音高和句间停顿。首次启动前需完成 Phase 1 的模型配置或使用离线演示。
+Phase 7 桌面宠物已实现为 macOS 原生悬浮窗口，设计预览位于 [ui/hud-prototype.html](ui/hud-prototype.html)，实现边界见 `docs/PHASE7_REPORT.md`。开发时在 `desktop/` 执行 `npm run tauri dev`；构建产物使用 `npm run tauri build`，输出 `.app` 和 `.dmg`。当前构建仍依赖本项目源码、`.venv`、`.env` 模型配置及本机语音辅助程序/模型，不能单独移动到其他 Mac 使用。窗口常驻最前、无边框并启用透明背景，点击伙伴可展开对话。Agent 由 Rust 后端以固定项目虚拟环境启动，通过 JSON Lines IPC 传递事件；有风险的工具操作仍需逐次确认，语音确认会先朗读操作目标；写入、屏幕输入和 MCP 等操作必须完整说“确认执行这项操作”，读取屏幕、窗口或工作区文件必须明确确认；长内容或疑似敏感参数需在桌面确认卡核对后点击允许或拒绝。应用会恢复最近的短期对话。点击语音键可手动进入连续对话；说完一句并停顿后，JARVIS 会自动识别、发送、语音回答，再继续聆听；再次点击结束。静音检测、语音识别和朗读均在本机执行，不录制或保存音频文件；只有识别文字会在对话轮次中发送给当前 Provider。缺少语音模型时，会先询问是否从 Apple 下载。快捷栏扬声器按钮控制普通文字对话的自动朗读；语音对话始终语音回答。朗读使用本机高品质中文语音，并微调语速、音高和句间停顿。首次启动前需完成 Phase 1 的模型配置或使用离线演示。
 
-桌面快捷栏的“唤”和 `KWS` 按钮分别按需开启 Apple SpeechAnalyzer 和 Sherpa-ONNX 本机唤醒监听，应用启动时不会自动开启麦克风。监听短语为“贾维斯·零”；KWS 检测后会尝试把同句剩余语音交给本机识别。语音对话期间说“退下吧”会结束当前对话并恢复刚才选择的唤醒监听；唤醒识别异常时会按 1、2、4 秒间隔自动尝试恢复，连续失败三次后提示手动检查。需确认的操作会先播报目标：写入、屏幕输入和 MCP 等操作必须完整说“确认执行这项操作”，读取屏幕、窗口或工作区文件必须明确确认；长内容或疑似敏感参数需在桌面确认卡核对后点击允许或拒绝。首次启动应用时，macOS 会请求麦克风权限。监听复用 Apple 本机语音转写模型，音频仅在本机处理，不上传或保存；它不是专用低功耗关键词识别器，持续监听可能增加耗电并出现误识别。退出应用会停止监听。
+桌面快捷栏的“唤”和 `KWS` 按钮分别按需开启 Apple SpeechAnalyzer 和 Sherpa-ONNX 本机唤醒监听，应用启动时不会自动开启麦克风。监听短语为“贾维斯·零”；KWS 检测后会尝试把同句剩余语音交给本机识别。语音对话期间说“退下吧”会结束当前对话并恢复刚才选择的唤醒监听；唤醒识别异常时会按 1、2、4 秒间隔自动尝试恢复，连续失败三次后提示手动检查。需确认的操作会先播报目标：写入、屏幕输入和 MCP 等操作必须完整说“确认执行这项操作”，读取屏幕、窗口或工作区文件必须明确确认；长内容或疑似敏感参数需在桌面确认卡核对后点击允许或拒绝。首次启动应用时，macOS 会请求麦克风权限。两种监听都在本机处理音频，不上传或保存。Apple SpeechAnalyzer 路径使用完整语音识别而非专用关键词模型，持续监听可能增加耗电并出现误识别；Sherpa 路径使用专用关键词模型。退出应用会停止监听。
 
 登录后自动启动可通过 `scripts/install_autostart.command` 安装当前用户的 LaunchAgent；关闭时运行 `scripts/remove_autostart.command`。两个脚本只影响当前 macOS 用户。唤醒监听默认关闭；需要时点击对应按钮开启，再点击关闭或退出应用停止。
 
