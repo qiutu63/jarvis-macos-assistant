@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JARVIS · 桌面宠物原型</title>
+  <style>
+    :root { color-scheme: dark; --ink:#eaf5f6; --muted:#93aeb6; --mint:#a8f0dc; --blue:#91dff1; --glass:rgba(15,28,39,.67); }
+    * { box-sizing:border-box; }
+    body {
+      margin:0; min-height:100vh; overflow:hidden; color:var(--ink);
+      font:14px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif;
+      background:
+        radial-gradient(ellipse at 75% 78%,rgba(53,159,177,.2),transparent 31%),
+        radial-gradient(ellipse at 22% 12%,rgba(94,109,180,.2),transparent 38%),
+        linear-gradient(145deg,#111c30 0%,#172a3a 49%,#0d1c28 100%);
+    }
+    body:before, body:after { content:""; position:fixed; inset:0; pointer-events:none; }
+    body:before { opacity:.28; background-image:radial-gradient(1px 1px at 8% 24%,#d9f5ff 99%,transparent),radial-gradient(1px 1px at 41% 17%,#d9f5ff 99%,transparent),radial-gradient(1px 1px at 69% 31%,#d9f5ff 99%,transparent),radial-gradient(1px 1px at 87% 13%,#d9f5ff 99%,transparent),radial-gradient(1px 1px at 30% 69%,#d9f5ff 99%,transparent),radial-gradient(1px 1px at 92% 57%,#d9f5ff 99%,transparent); }
+    body:after { background:linear-gradient(180deg,rgba(4,10,16,.12),transparent 23%,transparent 76%,rgba(4,10,16,.24)); }
+    .preview-tag { position:fixed; top:22px; left:25px; z-index:2; display:flex; align-items:center; gap:9px; color:#b5c8cd; font-size:10px; letter-spacing:1.1px; text-transform:uppercase; }
+    .preview-tag .spark { width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 13px var(--mint); }
+    .preview-note { position:fixed; top:21px; right:24px; z-index:2; padding:7px 11px; border:1px solid rgba(208,231,235,.13); border-radius:20px; background:rgba(7,17,25,.3); color:#9eb6bd; font-size:10px; backdrop-filter:blur(12px); }
+    .scene { position:relative; z-index:1; width:min(900px,100%); height:100vh; min-height:560px; margin:auto; }
+    .ambient { position:absolute; left:50%; top:57%; width:380px; height:210px; transform:translate(-50%,-50%); border-radius:50%; background:rgba(85,213,208,.1); filter:blur(58px); }
+    .bubble {
+      position:absolute; left:50%; top:15%; width:min(390px,calc(100vw - 34px)); padding:17px 19px 15px;
+      transform:translateX(-50%); border:1px solid rgba(203,235,238,.18); border-radius:19px;
+      background:rgba(13,27,38,.66); box-shadow:0 16px 45px rgba(2,10,17,.2); backdrop-filter:blur(18px);
+      animation:appear .7s ease-out both;
+    }
+    .bubble:after { content:""; position:absolute; left:50%; bottom:-7px; width:13px; height:13px; transform:translateX(-50%) rotate(45deg); border-right:1px solid rgba(203,235,238,.18); border-bottom:1px solid rgba(203,235,238,.18); background:#142630; }
+    .bubble-head { display:flex; align-items:center; gap:8px; margin-bottom:7px; color:#a9e9df; font-size:10px; letter-spacing:.7px; }
+    .mini-mark { display:grid;place-items:center;width:19px;height:19px;border:1px solid rgba(168,240,220,.4);border-radius:50%;font-size:9px; }
+    .bubble p { margin:0; color:#e5f0f0; font-size:14px; }
+    .bubble-foot { display:flex;justify-content:space-between;align-items:center;margin-top:12px;color:#91a9b1;font-size:10px; }
+    .memory-chip { color:#a5d6cf; }
+    .pet-wrap { position:absolute; left:50%; top:55%; width:370px; height:480px; transform:translate(-50%,-50%); display:grid;place-items:center; }
+    .pet-art { position:relative; z-index:1; display:block; width:auto; height:min(460px,58vh); max-width:calc(100vw - 80px); object-fit:contain; filter:drop-shadow(0 16px 32px rgba(22,109,255,.25)); animation:bob 4.4s ease-in-out infinite; }
+    .pet-shadow { position:absolute; bottom:5px; left:50%; width:148px; height:25px; transform:translateX(-50%); border-radius:50%; background:rgba(1,9,13,.43);filter:blur(9px);animation:shadow 4.4s ease-in-out infinite; }
+    .nameplate { position:absolute; top:calc(100% - 12px); left:50%; transform:translateX(-50%); display:flex;align-items:center;gap:8px;white-space:nowrap;color:#e1f0f2;font-size:11px;letter-spacing:2px; }
+    .nameplate small { color:#8ca8af;font-size:9px;letter-spacing:.7px; }
+    .idle { display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:5px 9px; border:1px solid rgba(168,240,220,.16); border-radius:15px; color:#addacc; background:rgba(12,32,36,.5); font-size:10px; letter-spacing:.2px; }
+    .idle-dot { width:5px;height:5px;border-radius:50%;background:#9fe4c8;box-shadow:0 0 8px #9fe4c8; }
+    .pet-info { position:absolute; left:50%; bottom:10%; transform:translateX(-50%); text-align:center; }
+    .pet-info p { margin:8px 0 0; color:#93aeb6; font-size:11px; }
+    .quickbar { position:absolute; left:50%; bottom:7%; transform:translateX(-50%); display:flex;gap:9px;padding:8px; border:1px solid rgba(208,231,235,.12);border-radius:18px;background:rgba(8,19,28,.48);backdrop-filter:blur(15px); }
+    .quickbar button { width:39px;height:38px;display:grid;place-items:center;border:1px solid rgba(208,231,235,.09);border-radius:12px;background:rgba(227,247,247,.04);color:#b8d3d6;font-size:16px; }
+    .quickbar button:disabled { opacity:.78; }
+    .quickbar button span { display:none; }
+    .quickbar-label { position:absolute;left:50%;bottom:calc(7% - 23px);transform:translateX(-50%);color:#78939c;font-size:9px;white-space:nowrap; }
+    @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-9px)} }
+    @keyframes shadow { 0%,100%{transform:translateX(-50%) scale(1);opacity:.7} 50%{transform:translateX(-50%) scale(.88);opacity:.5} }
+    @keyframes blink { 0%,46%,50%,100%{transform:scaleY(1)} 48%{transform:scaleY(.09)} }
+    @keyframes tail { from{transform:rotate(-7deg)} to{transform:rotate(12deg)} }
+    @keyframes glow { from{opacity:.55} to{opacity:1} }
+    @keyframes appear { from{opacity:0;translate:0 8px} to{opacity:1;translate:0 0} }
+    @media(max-height:650px){.bubble{top:8%}.pet-wrap{top:49%;height:380px}.pet-art{height:min(350px,55vh)}.pet-info{bottom:11%}.quickbar{bottom:4%}.quickbar-label{bottom:calc(4% - 21px)}}
+    @media(max-width:520px){.preview-tag{left:14px;top:14px}.preview-note{right:14px;top:12px;font-size:9px}.bubble{top:12%;padding:14px 15px}.pet-wrap{top:53%;height:420px}.pet-art{height:min(400px,56vh)}.pet-info{bottom:10%}}
+    @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
+  </style>
+</head>
+<body>
+  <div class="preview-tag"><i class="spark"></i>JARVIS · DESKTOP PET</div>
+  <div class="preview-note">概念预览 · 尚未连接 Agent</div>
+  <main class="scene" aria-label="JARVIS 桌面宠物设计预览">
+    <div class="ambient"></div>
+    <section class="bubble" aria-label="宠物对话气泡示例">
+      <div class="bubble-head"><span class="mini-mark">J</span> JARVIS <span>·</span> 伙伴模式</div>
+      <p>嗨，我在这里。需要帮忙时，随时叫我。</p>
+      <div class="bubble-foot"><span class="memory-chip">✦ 记得你喜欢简洁的中文回复</span><span>刚刚</span></div>
+    </section>
+    <div class="pet-wrap">
+      <div class="pet-shadow"></div>
+      <img class="pet-art" src="assets/jarvis-particle-companion-v2.png" alt="蓝色粒子光点构成的 JARVIS 虚拟人物伙伴" />
+      <div class="nameplate">JARVIS <small>你的桌面伙伴</small></div>
+    </div>
+    <div class="pet-info">
+      <div class="idle"><i class="idle-dot"></i> 安静陪伴中</div>
+      <p>点点头、眨眨眼，等你来找我</p>
+    </div>
+    <nav class="quickbar" aria-label="未来快捷操作示意">
+      <button disabled aria-label="对话">✧</button><button disabled aria-label="记忆">♡</button><button disabled aria-label="语音">♫</button><button disabled aria-label="更多">···</button>
+    </nav>
+    <div class="quickbar-label">快捷入口 · 预览中，不可操作</div>
+  </main>
+</body>
+</html>
